@@ -1593,7 +1593,7 @@ function createZoneFromVoidAt(clientX, clientY) {
             </div>
 
             {/* Desktop controls */}
-            <div className="hidden md:flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* Search and filter */}
               <div className="flex items-center rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
                 <Search className="w-4 h-4 text-slate-500 ml-3" />
