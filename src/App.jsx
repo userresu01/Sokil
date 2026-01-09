@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { zones as PATH_ZONES } from "./zones.paths";
+import engMap from "./assets/eng.png";
+import { features as ENG_FEATURES } from "./engineering.paths"; 
+
 import {
   HardHat,
   MapPin,
@@ -41,6 +44,8 @@ import projectMap from "./assets/project.png";
 const LS_ZONES = "bap_zones_v4_fixed";
 const LS_ADMIN = "bap_admin_session_v4_fixed";
 const LS_SETTINGS = "bap_project_settings_v4_fixed";
+const LS_ENG = "bap_eng_v1";
+
 
 /* =========================
    Helpers
@@ -148,18 +153,39 @@ const DEFAULT_SETTINGS = {
    Zones preset
    rect is in PERCENT (0..100)
 ========================= */
-const AUTO_ZONES = PATH_ZONES.map((z, i) => ({
-  id: z.id,
-  name: z.name ?? `Zone ${String(i + 1).padStart(2, "0")}`,
-  status: "план",
-  area: "",
-  type: "",
-  hasProject: true,
-  shape: "path",
-  d: z.d,
-  params: {},
-  project: { title: "", description: "", metrics: {} },
-}));
+const AUTO_ZONES = Array.isArray(PATH_ZONES)
+  ? PATH_ZONES.map((z, i) => ({
+      id: z.id,
+      name: z.name ?? `Zone ${String(i + 1).padStart(2, "0")}`,
+      status: "план",
+      area: "",
+      type: "",
+      hasProject: true,
+      shape: "path",
+      d: z.d,
+      params: {},
+      project: { title: "", description: "", metrics: {} },
+    }))
+  : [];
+
+
+const AUTO_ENG = Array.isArray(ENG_FEATURES)
+  ? ENG_FEATURES.map((f, i) => ({
+      id: f.id,
+      name: f.name ?? (f.kind === "line" ? `Line ${f.id}` : `Zone ${f.id}`),
+      status: "",
+      area: "",
+      type: "",
+      hasProject: true,
+      shape: f.kind === "polygon" ? "path" : "line",
+      d: f.d,
+      dash: f.dash ?? null,
+      params: {},
+      project: { title: "", description: "", metrics: {} },
+    }))
+  : [];
+
+
 
 
 /* =========================
@@ -226,23 +252,28 @@ function Modal({ title, children, onClose, small = false }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className={"relative w-full " + (small ? "max-w-md" : "max-w-3xl")}>
-        <div className="rounded-2xl bg-white border border-slate-200 shadow-lg p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="text-lg font-semibold">{title}</div>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="mt-4">{children}</div>
+      <div
+        className={
+          "relative w-full rounded-2xl border border-slate-200 bg-white shadow-lg p-5 " +
+          (small ? "max-w-md" : "max-w-4xl")
+        }
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="text-lg font-semibold">{title}</div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
+
+        <div className="mt-4">{children}</div>
       </div>
     </div>
   );
 }
+
 
 function Field({ label, children, className = "" }) {
   return (
@@ -270,6 +301,7 @@ function RectTiny({ value, onChange }) {
 ========================= */
 function AdminDetails({
   selected,
+  mapMode,
   createZone,
   duplicateZone,
   deleteZone,
@@ -306,6 +338,7 @@ function AdminDetails({
   const m = statusMeta(selected.status);
   const IconCmp = m.icon;
 
+ 
   return (
     <div className="grid grid-cols-12 gap-4">
       <div className="col-span-12 md:col-span-5">
@@ -753,12 +786,7 @@ function AdminSettings({ settings, setSettings, resetData }) {
    App
 ========================= */
 export default function App() {
-
-  useEffect(() => {
-  localStorage.removeItem(LS_ZONES);
-  localStorage.removeItem(LS_ADMIN);
-  localStorage.removeItem(LS_SETTINGS);
-  }, []);
+ 
   const [settings, setSettings] = useState(() => {
     const saved = safeJsonParse(localStorage.getItem(LS_SETTINGS), null);
     return saved
@@ -780,26 +808,34 @@ export default function App() {
   }, []);
 
   const [imagesLoaded, setImagesLoaded] = useState(false);
-  useEffect(() => {
-    let loaded = 0;
-    const b = new Image();
-    const p = new Image();
-    const handleLoad = () => {
-      loaded++;
-      if (loaded === 2) setImagesLoaded(true);
-    };
-    b.src = baseMap;
-    p.src = projectMap;
-    b.onload = handleLoad;
-    p.onload = handleLoad;
-  }, []);
+ useEffect(() => {
+  let loaded = 0;
+  const b = new Image();
+  const p = new Image();
+  const e = new Image();
 
-  const [hoveredZoneId, setHoveredZoneId] = useState(null);
+  const handleLoad = () => {
+    loaded++;
+    if (loaded === 3) setImagesLoaded(true);
+  };
+
+  b.src = baseMap;
+  p.src = projectMap;
+  e.src = engMap;
+
+  b.onload = handleLoad;
+  p.onload = handleLoad;
+  e.onload = handleLoad;
+}, []);
+
+
+  const [isMapHovered, setIsMapHovered] = useState(false);
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminLoginOpen, setAdminLoginOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
   const [adminPanel, setAdminPanel] = useState("details");
+  
 
   const [zones, setZones] = useState(() => {
     const saved = safeJsonParse(localStorage.getItem(LS_ZONES), null);
@@ -815,20 +851,40 @@ export default function App() {
     if (saved?.isAdmin) setIsAdmin(true);
   }, []);
 
+  const [engItems, setEngItems] = useState(() => {
+  const saved = safeJsonParse(localStorage.getItem(LS_ENG), null);
+  return Array.isArray(saved) ? saved : AUTO_ENG;
+});
+
+useEffect(() => {
+  localStorage.setItem(LS_ENG, JSON.stringify(engItems));
+}, [engItems]);
+
+
   const [selectedId, setSelectedId] = useState(null);
-  const selected = useMemo(() => zones.find((z) => z.id === selectedId) || null, [zones, selectedId]);
+
+
 
   const [query, setQuery] = useState("");
   const [filterProjectOnly, setFilterProjectOnly] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
 
-  const [mapMode, setMapMode] = useState("project");
+  const [mapMode, setMapMode] = useState("base");
+
+  const showProject = mapMode === "project" || (mapMode === "base" && isMapHovered);
+  const showBase = mapMode === "base" && !isMapHovered;
+  const showEng = mapMode === "eng";
+  
+  const VIEW = mapMode === "eng"
+  ? { w: 1151, h: 766 }
+  : { w: 1280, h: 844 };
 
   const [contoursVisible, setContoursVisible] = useState(true);
   const [onlyProjectContours, setOnlyProjectContours] = useState(true);
 
   const containerRef = useRef(null);
+  const svgRef = useRef(null);
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
 
@@ -860,6 +916,30 @@ export default function App() {
     });
   }, [zones, query, filterProjectOnly, isAdmin]);
 
+  const activeItems = mapMode === "eng" ? engItems : zones;
+  const selected = useMemo(
+  () => activeItems.find((z) => z.id === selectedId) || null,
+  [activeItems, selectedId]
+);
+
+const filteredItems = useMemo(() => {
+  const q = query.trim().toLowerCase();
+  let list = activeItems;
+
+  // В eng режиме НЕ фильтруем по hasProject, там всё должно быть кликабельно
+  if (mapMode !== "eng") {
+    if (!isAdmin) list = list.filter((z) => !!z.hasProject);
+    if (filterProjectOnly) list = list.filter((z) => !!z.hasProject);
+  }
+
+  if (!q) return list;
+  return list.filter((z) => {
+    const hay = `${z.id} ${z.name} ${z.status} ${z.type} ${z.area}`.toLowerCase();
+    return hay.includes(q);
+  });
+}, [activeItems, query, filterProjectOnly, isAdmin, mapMode]);
+
+
   const stats = useMemo(() => {
     const total = zones.length;
     const withProject = zones.filter((z) => z.hasProject).length;
@@ -871,6 +951,7 @@ export default function App() {
 
   function canClickZone(z) {
     if (!z) return false;
+    if (mapMode == "eng") return true;
     return isAdmin ? true : !!z.hasProject;
   }
 
@@ -911,29 +992,36 @@ export default function App() {
   }
 
   function onPointerDown(e) {
-    if (e.button !== 0) return;
+  if (e.button !== 0) return;
 
-    const zoneEl = e.target?.closest?.("[data-zoneid]");
-    if (zoneEl) {
-      dragRef.current.moved = false;
-      return;
-    }
-
-    const el = containerRef.current;
-    if (!el) return;
-
-    dragRef.current.dragging = true;
-    dragRef.current.pid = e.pointerId;
-    dragRef.current.sx = e.clientX;
-    dragRef.current.sy = e.clientY;
-    dragRef.current.px = pan.x;
-    dragRef.current.py = pan.y;
+  const zoneEl = e.target?.closest?.("[data-zoneid]");
+  if (zoneEl) {
     dragRef.current.moved = false;
-
-    try {
-      el.setPointerCapture(e.pointerId);
-    } catch {}
+    return;
   }
+
+  // ✅ ALT+CLICK по пустоте => создаём зону из пустыря (только админ)
+  if (isAdmin && e.altKey) {
+    const ok = createZoneFromVoidAt(e.clientX, e.clientY);
+    if (ok) return; // не начинаем пан
+  }
+
+  const el = containerRef.current;
+  if (!el) return;
+
+  dragRef.current.dragging = true;
+  dragRef.current.pid = e.pointerId;
+  dragRef.current.sx = e.clientX;
+  dragRef.current.sy = e.clientY;
+  dragRef.current.px = pan.x;
+  dragRef.current.py = pan.y;
+  dragRef.current.moved = false;
+
+  try {
+    el.setPointerCapture(e.pointerId);
+  } catch {}
+}
+
 
   function onPointerMove(e) {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -961,7 +1049,7 @@ export default function App() {
     dragRef.current.dragging = false;
     dragRef.current.pid = null;
     setHover({ id: null, x: 0, y: 0 });
-    setHoveredZoneId(null);
+    setIsMapHovered(false);
   }
 
   function loginAdmin() {
@@ -1153,6 +1241,318 @@ export default function App() {
     };
   }
 
+  function clientToSvgPoint(clientX, clientY) {
+  const svg = svgRef.current;
+  if (!svg) return null;
+  const pt = svg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return null;
+  const inv = ctm.inverse();
+  const sp = pt.matrixTransform(inv);
+  return { x: sp.x, y: sp.y };
+}
+
+function nextVoidId(existing) {
+  let n = 1;
+  while (existing.has(`ZVOID${String(n).padStart(2, "0")}`)) n++;
+  return `ZVOID${String(n).padStart(2, "0")}`;
+}
+
+// Рисуем все зоны как "занято" на канвас (mask = 1), затем flood fill по "пустоте" (mask=0)
+function buildOccupiedMaskFromZones(w, h, zonesList) {
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.clearRect(0, 0, w, h);
+
+  // Заполняем занятые области белым
+  ctx.fillStyle = "#fff";
+
+  for (const z of zonesList) {
+    if (!z?.d) continue;
+    // в твоём приложении зоны — path, линии можно игнорировать
+    if (z.shape === "line") continue;
+
+    try {
+      const p = new Path2D(z.d);
+      ctx.fill(p);
+    } catch {
+      // если какая-то path-строка битая — просто пропускаем
+    }
+  }
+
+  const img = ctx.getImageData(0, 0, w, h).data;
+  const occ = new Uint8Array(w * h);
+  // если alpha>0 => занято
+  for (let i = 0, px = 0; i < img.length; i += 4, px++) {
+    occ[px] = img[i + 3] > 0 ? 1 : 0;
+  }
+  return { occ, w, h };
+}
+
+function floodFillVoid(occ, w, h, sx, sy) {
+  // sx,sy в координатах w/h
+  const ix = Math.floor(sx);
+  const iy = Math.floor(sy);
+  if (ix < 0 || iy < 0 || ix >= w || iy >= h) return null;
+
+  const idx0 = iy * w + ix;
+  if (occ[idx0] === 1) return null; // старт попал в "занято"
+
+  const visited = new Uint8Array(w * h);
+  const qx = new Int32Array(w * h);
+  const qy = new Int32Array(w * h);
+  let qh = 0, qt = 0;
+
+  visited[idx0] = 1;
+  qx[qt] = ix; qy[qt] = iy; qt++;
+
+  // Сохраним bounding box, чтобы ускорить потом
+  let minX = ix, maxX = ix, minY = iy, maxY = iy;
+
+  // 4-связность
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+
+  while (qh < qt) {
+    const x = qx[qh];
+    const y = qy[qh];
+    qh++;
+
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+
+    for (const [dx, dy] of dirs) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+      const ni = ny * w + nx;
+      if (visited[ni]) continue;
+      if (occ[ni] === 1) continue; // нельзя залезать в занято
+      visited[ni] = 1;
+      qx[qt] = nx; qy[qt] = ny; qt++;
+    }
+  }
+
+  return { visited, minX, maxX, minY, maxY };
+}
+
+// Простая marching squares для получения контура области visited==1
+function marchingSquares(visited, w, h, bb) {
+  const { minX, maxX, minY, maxY } = bb;
+
+  // берём область на 1 пиксель шире, чтобы контур не обрезался
+  const x0 = Math.max(minX - 1, 0);
+  const x1 = Math.min(maxX + 1, w - 2);
+  const y0 = Math.max(minY - 1, 0);
+  const y1 = Math.min(maxY + 1, h - 2);
+
+  // helper: внутри ли область
+  const inside = (x, y) => visited[y * w + x] === 1;
+
+  // Собираем сегменты (много), потом склеим в полилинию
+  const segments = [];
+
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const a = inside(x, y) ? 1 : 0;
+      const b = inside(x + 1, y) ? 1 : 0;
+      const c = inside(x + 1, y + 1) ? 1 : 0;
+      const d = inside(x, y + 1) ? 1 : 0;
+      const code = (a << 3) | (b << 2) | (c << 1) | d;
+
+      // Координаты углов клетки: (x,y)-(x+1,y+1)
+      // Середины рёбер:
+      const top = [x + 0.5, y];
+      const right = [x + 1, y + 0.5];
+      const bottom = [x + 0.5, y + 1];
+      const left = [x, y + 0.5];
+
+      // Таблица для стандартного marching squares (без амбигуити-решения — нам достаточно для “дырки”)
+      // Добавляем сегмент(ы) в формате [x1,y1,x2,y2]
+      switch (code) {
+        case 0:
+        case 15:
+          break;
+        case 1:
+        case 14:
+          segments.push([...left, ...bottom]);
+          break;
+        case 2:
+        case 13:
+          segments.push([...bottom, ...right]);
+          break;
+        case 3:
+        case 12:
+          segments.push([...left, ...right]);
+          break;
+        case 4:
+        case 11:
+          segments.push([...top, ...right]);
+          break;
+        case 5:
+          segments.push([...top, ...left]);
+          segments.push([...bottom, ...right]);
+          break;
+        case 6:
+        case 9:
+          segments.push([...top, ...bottom]);
+          break;
+        case 7:
+        case 8:
+          segments.push([...top, ...left]);
+          break;
+        case 10:
+          segments.push([...top, ...right]);
+          segments.push([...bottom, ...left]);
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  if (!segments.length) return null;
+
+  // Склейка сегментов в один контур: быстрый greedy по совпадению концов
+  // (для “дырки” обычно получается один связный цикл)
+  const key = (x, y) => `${x.toFixed(3)},${y.toFixed(3)}`;
+  const map = new Map();
+  for (const s of segments) {
+    const k1 = key(s[0], s[1]);
+    if (!map.has(k1)) map.set(k1, []);
+    map.get(k1).push(s);
+  }
+
+  // стартуем с первого сегмента
+  const first = segments[0];
+  let cx = first[2], cy = first[3];
+  const poly = [[first[0], first[1]], [first[2], first[3]]];
+
+  const used = new Set();
+  used.add(first);
+
+  // ищем следующий сегмент по стартовой точке
+  for (let guard = 0; guard < 200000; guard++) {
+    const k = key(cx, cy);
+    const arr = map.get(k);
+    if (!arr || !arr.length) break;
+
+    let next = null;
+    for (const s of arr) {
+      if (used.has(s)) continue;
+      next = s;
+      break;
+    }
+    if (!next) break;
+
+    used.add(next);
+    cx = next[2]; cy = next[3];
+    poly.push([cx, cy]);
+
+    // замкнули
+    const [sx, sy] = poly[0];
+    if (Math.abs(cx - sx) < 1e-3 && Math.abs(cy - sy) < 1e-3) break;
+  }
+
+  // Упростим (уберём лишние точки)
+  const simplified = [];
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i];
+    const prev = simplified[simplified.length - 1];
+    if (!prev || Math.hypot(p[0] - prev[0], p[1] - prev[1]) > 0.3) simplified.push(p);
+  }
+
+  if (simplified.length < 10) return null;
+  return simplified;
+}
+
+function polyToSvgPath(poly, scaleX, scaleY) {
+  // poly в координатах mask (пиксели), переводим обратно в viewBox
+  const pts = poly.map(([x, y]) => [x * scaleX, y * scaleY]);
+  let d = `M${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`;
+  for (let i = 1; i < pts.length; i++) {
+    d += `L${pts[i][0].toFixed(2)} ${pts[i][1].toFixed(2)}`;
+  }
+  d += "Z";
+  return d;
+}
+
+function createZoneFromVoidAt(clientX, clientY) {
+  if (!isAdmin) return false;
+  if (mapMode === "eng") return false; // если нужно — можно включить и для eng отдельно
+
+  const svgPt = clientToSvgPoint(clientX, clientY);
+  if (!svgPt) return false;
+
+  // Маска делается уменьшенной, чтобы не лагало
+  const MASK_W = 420;
+  const MASK_H = Math.round((MASK_W * VIEW.h) / VIEW.w);
+
+  // Масштаб: viewBox -> mask
+  const sx = MASK_W / VIEW.w;
+  const sy = MASK_H / VIEW.h;
+
+  const seedX = svgPt.x * sx;
+  const seedY = svgPt.y * sy;
+
+  const { occ, w, h } = buildOccupiedMaskFromZones(MASK_W, MASK_H, zones);
+
+  const filled = floodFillVoid(occ, w, h, seedX, seedY);
+  if (!filled) {
+    alert("Тут не пустота (або занадто малий зазор).");
+    return false;
+  }
+
+  // Если пустота слишком большая (например фон вокруг всего) — не создаём
+  const area = (() => {
+    // грубо оцениваем площадь по bbox
+    const bw = (filled.maxX - filled.minX + 1);
+    const bh = (filled.maxY - filled.minY + 1);
+    return bw * bh;
+  })();
+  // if (area > w * h * 0.45) {
+    // alert("Це схоже на зовнішній фон, а не локальний 'пустир'.");
+    // return false;
+  // }
+
+  const poly = marchingSquares(filled.visited, w, h, filled);
+  if (!poly) {
+    alert("Не вдалося побудувати контур пустоти.");
+    return false;
+  }
+
+  // mask -> viewBox
+  const d = polyToSvgPath(poly, VIEW.w / MASK_W, VIEW.h / MASK_H);
+
+  const existingIds = new Set(zones.map((z) => z.id));
+  const id = nextVoidId(existingIds);
+
+  const newZone = {
+    id,
+    name: `Void ${id}`,
+    status: "план",
+    area: "",
+    type: "",
+    hasProject: true,
+    shape: "path",
+    d,
+    params: {},
+    project: { title: "", description: "", metrics: {} },
+  };
+
+  setZones((prev) => [newZone, ...prev]);
+  setSelectedId(id);
+  setModalOpen(true);
+  return true;
+}
+
+
+
   return (
     <>
       <style>{`
@@ -1219,24 +1619,22 @@ export default function App() {
                 */}
               </div>
 
-              {/* Map controls */}
-              <SoftButton onClick={zoomIn} title="Збільшити масштаб">
-                <ZoomIn className="w-4 h-4" />
-              </SoftButton>
-              <SoftButton onClick={zoomOut} title="Зменшити масштаб">
-                <ZoomOut className="w-4 h-4" />
-              </SoftButton>
-              <SoftButton onClick={resetView} title="Початковий вигляд">
-                <Undo2 className="w-4 h-4" />
-              </SoftButton>
+              
               <SoftButton
-                onClick={() => setMapMode((m) => (m === "project" ? "base" : "project"))}
-                title="Перемкнути карту"
-                className={mapMode === "project" ? "bg-amber-50 border-amber-200" : ""}
+                onClick={() =>
+                  setMapMode((m) => (m === "base" ? "project" : m === "project" ? "eng" : "base"))
+                }
+                title="Перемкнути режим"
+                className={mapMode !== "base" ? "bg-amber-50 border-amber-200" : ""}
               >
                 <Layers className="w-4 h-4" />
-                {mapMode === "project" ? "КАРТА З ЖК" : "КАРТА БЕЗ ЖК"}
+                {mapMode === "base"
+                  ? "КАРТА БЕЗ ЖК"
+                  : mapMode === "project"
+                  ? "КАРТА З ЖК"
+                  : "СХЕМА ІНЖ. ЗАБЕЗПЕЧЕННЯ"}
               </SoftButton>
+
 
               {/* Admin controls */}
               {!isAdmin ? (
@@ -1375,11 +1773,11 @@ export default function App() {
                 <Card className="p-3">
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-semibold">{settings.strings.zones}</div>
-                    <span className="text-xs text-slate-600">{filteredZones.length}</span>
+                    <span className="text-xs text-slate-600">{filteredItems.length}</span>
                   </div>
 
                   <div className="mt-2 max-h-[360px] overflow-auto pr-1">
-                    {filteredZones.map((z) => {
+                    {filteredItems.map((z) => {
                       const clickable = canClickZone(z);
                       const isSel = selectedId === z.id;
                       return (
@@ -1474,10 +1872,11 @@ export default function App() {
     onPointerMove={onPointerMove}
     onPointerUp={onPointerUp}
     onPointerLeave={onPointerLeaveContainer}
-    className="relative w-full aspect-[2048/1365] overflow-hidden rounded-2xl border border-slate-200 bg-white select-none cursor-grab"
-    style={{ touchAction: "none" }}
+    className="relative w-full overflow-hidden rounded-2xl border border-slate-200 bg-white select-none cursor-grab"
+    style={{ touchAction: "none", aspectRatio: mapMode === "eng" ? "1151/766" : "1280/844" }}
+    onMouseEnter={() => setIsMapHovered(true)}
+    onMouseLeave={() => setIsMapHovered(false)}
   >
-    {/* Transform layer */}
     <div
       className="absolute inset-0"
       style={{
@@ -1493,34 +1892,42 @@ export default function App() {
       ) : (
         <>
           <img
-            src={baseMap}
-            alt="Base map"
-            className="absolute inset-0 w-full h-full object-contain pointer-events-none"
-            draggable={false}
-            style={{ opacity: mapMode === "project" ? 0 : 1, transition: "opacity 0.3s ease" }}
-          />
-          <img
-            src={projectMap}
-            alt="Project map"
-            className="absolute inset-0 w-full h-full object-contain pointer-events-none"
-            draggable={false}
-            style={{
-              opacity: mapMode === "project" || hoveredZoneId != null ? 1 : 0,
-              transition: "opacity 0.3s ease",
-            }}
-          />
+  src={baseMap}
+  className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+  draggable={false}
+  style={{ opacity: showBase ? 1 : 0, transition: "opacity 0.25s ease" }}
+/>
+
+<img
+  src={projectMap}
+  className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+  draggable={false}
+  style={{ opacity: showProject ? 1 : 0, transition: "opacity 0.25s ease" }}
+/>
+
+<img
+  src={engMap}
+  className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+  draggable={false}
+  style={{ opacity: showEng ? 1 : 0, transition: "opacity 0.25s ease" }}
+/>
+
+
         </>
       )}
 
       <svg
+        ref={svgRef}
         className="absolute inset-0"
-        viewBox="0 0 1280 844"
+        viewBox={`0 0 ${VIEW.w} ${VIEW.h}`}
         preserveAspectRatio="xMidYMid meet"
         style={{ width: "100%", height: "100%" }}
       >
-        {zones.map((z) => {
+        {activeItems.map((z) => {
           if (onlyProjectContours && !z.hasProject && !isAdmin) return null;
-          if (z.shape !== "path" || !z.d) return null;
+          const isLine = z.shape === "line";
+          const isPath = z.shape === "path";
+          if((isPath && isLine) || !z.d) return null;
 
           const clickable = canClickZone(z);
           const isSel = selectedId === z.id;
@@ -1542,39 +1949,57 @@ export default function App() {
             ? "rgba(255,255,255,0.20)"
             : "rgba(255,255,255,0.06)";
 
-          return (
-            <path
-              key={z.id}
-              data-zoneid={z.id}
-              d={z.d}
-              stroke={strokeColor}
-              strokeWidth={strokeWidth}
-              fill={fillColor}
-              vectorEffect="non-scaling-stroke"
-              style={{
-                cursor: clickable ? "pointer" : "default",
-                pointerEvents: contoursVisible ? "all" : "none",
-                strokeOpacity: contoursVisible ? 1 : 0,
-                fillOpacity: contoursVisible ? 1 : 0,
-                transition: "fill 0.15s ease, stroke 0.15s ease, stroke-width 0.15s ease",
-                filter: isHoverZone || isSel ? "drop-shadow(0 0 10px rgba(255,255,255,0.22))" : "none",
-              }}
-              onMouseEnter={() => {
-                setHover((h) => ({ ...h, id: z.id }));
-                setHoveredZoneId(z.id);
-              }}
-              onMouseLeave={() => {
-                setHover((h) => (h.id === z.id ? { ...h, id: null } : h));
-                setHoveredZoneId(null);
-              }}
-              onClick={() => {
-                if (!clickable) return;
-                if (dragRef.current.moved) return;
-                setSelectedId(z.id);
-                setModalOpen(true);
-              }}
-            />
-          );
+return (
+  <g key={z.id}>
+    {(() => {
+      const isLine = z.shape === "line"; // для engItems ты так и задаёшь
+      const hitStroke = isLine ? 18 : 1;
+
+      return (
+        <path
+          data-zoneid={z.id}
+          d={z.d}
+          fill={isLine ? "none" : "rgba(0,0,0,0)"}   // ВАЖНО: полигон ловит по fill
+          stroke="rgba(0,0,0,0)"
+          strokeWidth={hitStroke}
+          pointerEvents={
+            contoursVisible ? (isLine ? "stroke" : "all") : "none"
+          }
+          onMouseEnter={() => setHover((h) => ({ ...h, id: z.id }))}
+          onMouseLeave={() => setHover((h) => (h.id === z.id ? { ...h, id: null } : h))}
+          onClick={() => {
+            if (!clickable) return;
+            if (dragRef.current.moved) return;
+            setSelectedId(z.id);
+            setModalOpen(true);
+          }}
+        />
+      );
+    })()}
+
+    <path
+      d={z.d}
+      fill={z.shape === "line" ? "none" : fillColor}
+      stroke={strokeColor}
+      strokeWidth={
+        z.shape === "line"
+          ? (isSel ? 3.2 : isHoverZone ? 2.6 : 2.0)
+          : strokeWidth
+      }
+      strokeDasharray={z.dash ? z.dash : undefined}
+      vectorEffect="non-scaling-stroke"
+      style={{
+        pointerEvents: "none",
+        strokeOpacity: contoursVisible ? 1 : 0,
+        fillOpacity: contoursVisible ? 1 : 0,
+        transition: "fill 0.15s ease, stroke 0.15s ease, stroke-width 0.15s ease",
+        filter: isHoverZone || isSel ? "drop-shadow(0 0 10px rgba(255,255,255,0.22))" : "none",
+      }}
+    />
+  </g>
+);
+
+
         })}
       </svg>
     </div>
@@ -1583,7 +2008,7 @@ export default function App() {
     {hover.id ? (
       <div className="absolute z-30 pointer-events-none" style={{ left: hover.x + 12, top: hover.y + 12 }}>
         {(() => {
-          const z = zones.find((x) => x.id === hover.id);
+          const z = activeItems.find((x) => x.id === hover.id);
           if (!z) return null;
           return (
             <div className="rounded-2xl bg-white border border-slate-200 px-3 py-2 shadow-md">
@@ -1652,6 +2077,7 @@ export default function App() {
                       {adminPanel === "details" ? (
                         <AdminDetails
                           selected={selected}
+                          mapMode={mapMode}
                           createZone={createZoneTextOnly}
                           duplicateZone={duplicateZone}
                           deleteZone={deleteZone}
@@ -1759,7 +2185,7 @@ export default function App() {
             </div>
           </Modal>
         ) : null}
-              </div>
-              </>
-          );
-        }
+      </div>
+    </>
+  );
+}
