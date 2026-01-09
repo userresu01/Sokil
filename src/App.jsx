@@ -782,6 +782,33 @@ function AdminSettings({ settings, setSettings, resetData }) {
   );
 }
 
+async function loadZonesFromPublicJson() {
+  const base = process.env.PUBLIC_URL || "";
+  const res = await fetch(`${base}/zones.json`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Не удалось загрузить zones.json");
+  const data = await res.json();
+  return Array.isArray(data?.zones) ? data.zones : [];
+}
+
+function loadZonesFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem("LS_ZONES_V3"); // ⚠️ если у тебя другой ключ — поменяй
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveInitialZones(isAdmin) {
+  const publicZones = await loadZonesFromPublicJson();
+  if (!isAdmin) return publicZones;
+
+  const localZones = loadZonesFromLocalStorage();
+  return localZones ?? publicZones;
+}
+
 /* =========================
    App
 ========================= */
@@ -862,6 +889,23 @@ useEffect(() => {
 
 
   const [selectedId, setSelectedId] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        const z = await resolveInitialZones(isAdmin);
+        if (!alive) return;
+        setZones(z);
+      } catch (e) {
+        console.error(e);
+        setZones([]);
+      }
+    })();
+
+    return () => { alive = false; };
+  }, [isAdmin]);
 
 
 
@@ -953,6 +997,24 @@ const filteredItems = useMemo(() => {
     if (!z) return false;
     if (mapMode == "eng") return true;
     return isAdmin ? true : !!z.hasProject;
+  }
+
+  function exportZonesJson(zones) {
+    const payload = {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      zones
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "zones.json";
+    a.click();
+
+    URL.revokeObjectURL(url);
   }
 
   function zoomIn() {
@@ -1593,7 +1655,7 @@ function createZoneFromVoidAt(clientX, clientY) {
             </div>
 
             {/* Desktop controls */}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="hidden md:flex items-center gap-2">
               {/* Search and filter */}
               <div className="flex items-center rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
                 <Search className="w-4 h-4 text-slate-500 ml-3" />
@@ -1673,6 +1735,27 @@ function createZoneFromVoidAt(clientX, clientY) {
             </div>
           </div>
         </div>
+        
+        {/* Mobile map mode switch */}
+<div className="md:hidden px-5 pt-3">
+  <SoftButton
+    onClick={() =>
+      setMapMode((m) =>
+        m === "base" ? "project" : m === "project" ? "eng" : "base"
+      )
+    }
+    className="w-full justify-center bg-amber-50 border-amber-200"
+  >
+    <Layers className="w-4 h-4" />
+    {mapMode === "base"
+      ? "Карта без ЖК"
+      : mapMode === "project"
+      ? "Карта з ЖК"
+      : "Інженерна схема"}
+  </SoftButton>
+</div>
+
+
 
         {/* Main content */}
         <div className="px-5 py-5">
