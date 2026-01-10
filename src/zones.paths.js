@@ -1,6 +1,3 @@
-// Auto-generated from provided SVG <path> data
-// Each entry keeps the original 'd' path string.
-
 export const zones = [
   { id: "z01", name: "Zone 01", d: "M662 329L663.5 280.5L703 273L696.5 333L662 329Z" },
   { id: "z02", name: "Zone 02", d: "M428 700.5L444.5 706.5L461.5 702L467.5 624H432.5L428 700.5Z" },

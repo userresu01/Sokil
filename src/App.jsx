@@ -38,18 +38,12 @@ import {
 import baseMap from "./assets/base.png";
 import projectMap from "./assets/project.png";
 
-/* =========================
-   Storage keys
-========================= */
 const LS_ZONES = "bap_zones_v4_fixed";
 const LS_ADMIN = "bap_admin_session_v4_fixed";
 const LS_SETTINGS = "bap_project_settings_v4_fixed";
 const LS_ENG = "bap_eng_v1";
 
 
-/* =========================
-   Helpers
-========================= */
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
 function safeJsonParse(str, fallback) {
@@ -103,9 +97,6 @@ function statusMeta(status) {
   };
 }
 
-/* =========================
-   Default strings/settings
-========================= */
 const DEFAULT_STRINGS = {
   overviewTitle: "Огляд",
   overviewDesc:
@@ -131,7 +122,7 @@ const DEFAULT_STRINGS = {
   projectInfoTitle: "Інформація по об’єкту",
   noProject: "Для цієї ділянки проєктних об’єктів немає.",
   adminLoginTitle: "Вхід адміністратора",
-  adminLoginDesc: "Локальний режим редагування. Пароль можна змінити у налаштуваннях.",
+  adminLoginDesc: "Режим редагування. Пароль можна змінити у налаштуваннях.",
   adminPasswordLabel: "Пароль",
   cancel: "Скасувати",
   login: "Увійти",
@@ -149,10 +140,6 @@ const DEFAULT_SETTINGS = {
   strings: DEFAULT_STRINGS,
 };
 
-/* =========================
-   Zones preset
-   rect is in PERCENT (0..100)
-========================= */
 const AUTO_ZONES = Array.isArray(PATH_ZONES)
   ? PATH_ZONES.map((z, i) => ({
       id: z.id,
@@ -188,9 +175,6 @@ const AUTO_ENG = Array.isArray(ENG_FEATURES)
 
 
 
-/* =========================
-   Small UI components
-========================= */
 function Card({ children, className = "" }) {
   return (
     <div className={"rounded-2xl bg-white border border-slate-200 shadow-sm " + className}>
@@ -296,9 +280,6 @@ function RectTiny({ value, onChange }) {
   );
 }
 
-/* =========================
-   Admin components
-========================= */
 function AdminDetails({
   selected,
   mapMode,
@@ -417,7 +398,6 @@ function AdminDetails({
       </div>
 
       <div className="col-span-12 md:col-span-7">
-        {/* Params */}
         <div className="rounded-xl border border-slate-200 bg-white p-3">
           <div className="flex items-center justify-between">
             <div className="font-semibold text-sm">Параметри (гнучкі поля)</div>
@@ -474,7 +454,6 @@ function AdminDetails({
           </div>
         </div>
 
-        {/* Project section */}
         <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
           <div className="flex items-center justify-between">
             <div className="font-semibold text-sm">Проєктні дані</div>
@@ -700,7 +679,7 @@ function AdminSettings({ settings, setSettings, resetData }) {
       <div className="col-span-12 md:col-span-7">
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <div className="font-semibold">Налаштування проєкту</div>
-          <div className="text-xs text-slate-600 mt-1">Зберігається локально.</div>
+          <div className="text-xs text-slate-600 mt-1">Зберігається публічно для всіх.</div>
 
           <div className="mt-4 grid grid-cols-12 gap-2">
             <Field label="Назва проєкту" className="col-span-12">
@@ -751,7 +730,7 @@ function AdminSettings({ settings, setSettings, resetData }) {
         <div className="rounded-xl border border-slate-200 bg-white p-4 mt-4">
           <div className="font-semibold">Тексти інтерфейсу</div>
           <div className="text-xs text-slate-600 mt-1">
-            Редагуй підписи та назви. Порожні поля повернуть значення за замовчуванням.
+            Редагуйте підписи та назви. Порожні поля повернуть значення за замовчуванням.
           </div>
 
           <div className="mt-3 grid grid-cols-12 gap-2">
@@ -792,7 +771,7 @@ async function loadZonesFromPublicJson() {
 
 function loadZonesFromLocalStorage() {
   try {
-    const raw = localStorage.getItem("LS_ZONES_V3"); // ⚠️ если у тебя другой ключ — поменяй
+    const raw = localStorage.getItem("LS_ZONES_V3");
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : null;
@@ -809,9 +788,6 @@ async function resolveInitialZones(isAdmin) {
   return localZones ?? publicZones;
 }
 
-/* =========================
-   App
-========================= */
 export default function App() {
  
   const [settings, setSettings] = useState(() => {
@@ -970,7 +946,6 @@ const filteredItems = useMemo(() => {
   const q = query.trim().toLowerCase();
   let list = activeItems;
 
-  // В eng режиме НЕ фильтруем по hasProject, там всё должно быть кликабельно
   if (mapMode !== "eng") {
     if (!isAdmin) list = list.filter((z) => !!z.hasProject);
     if (filterProjectOnly) list = list.filter((z) => !!z.hasProject);
@@ -1034,8 +1009,8 @@ const filteredItems = useMemo(() => {
     if (!el) return;
 
     const newScale = 2.5;
-    const cx = parseFloat(zone.rect.x) + parseFloat(zone.rect.w) / 2; // percent
-    const cy = parseFloat(zone.rect.y) + parseFloat(zone.rect.h) / 2; // percent
+    const cx = parseFloat(zone.rect.x) + parseFloat(zone.rect.w) / 2;
+    const cy = parseFloat(zone.rect.y) + parseFloat(zone.rect.h) / 2; 
 
     const { width, height } = el.getBoundingClientRect();
     const newPanX = ((50 - cx) / 100) * width * newScale;
@@ -1062,10 +1037,9 @@ const filteredItems = useMemo(() => {
     return;
   }
 
-  // ✅ ALT+CLICK по пустоте => создаём зону из пустыря (только админ)
   if (isAdmin && e.altKey) {
     const ok = createZoneFromVoidAt(e.clientX, e.clientY);
-    if (ok) return; // не начинаем пан
+    if (ok) return;
   }
 
   const el = containerRef.current;
@@ -1291,7 +1265,7 @@ const filteredItems = useMemo(() => {
     setModalOpen(false);
   }
 
-  // Convert rect percent (0..100) into SVG viewBox coordinates (1280x844)
+
   const VIEW_W = 1280;
   const VIEW_H = 844;
   function rectToSvg(r) {
@@ -1322,7 +1296,6 @@ function nextVoidId(existing) {
   return `ZVOID${String(n).padStart(2, "0")}`;
 }
 
-// Рисуем все зоны как "занято" на канвас (mask = 1), затем flood fill по "пустоте" (mask=0)
 function buildOccupiedMaskFromZones(w, h, zonesList) {
   const canvas = document.createElement("canvas");
   canvas.width = w;
@@ -1330,25 +1303,21 @@ function buildOccupiedMaskFromZones(w, h, zonesList) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   ctx.clearRect(0, 0, w, h);
 
-  // Заполняем занятые области белым
   ctx.fillStyle = "#fff";
 
   for (const z of zonesList) {
     if (!z?.d) continue;
-    // в твоём приложении зоны — path, линии можно игнорировать
     if (z.shape === "line") continue;
 
     try {
       const p = new Path2D(z.d);
       ctx.fill(p);
     } catch {
-      // если какая-то path-строка битая — просто пропускаем
     }
   }
 
   const img = ctx.getImageData(0, 0, w, h).data;
   const occ = new Uint8Array(w * h);
-  // если alpha>0 => занято
   for (let i = 0, px = 0; i < img.length; i += 4, px++) {
     occ[px] = img[i + 3] > 0 ? 1 : 0;
   }
@@ -1356,13 +1325,12 @@ function buildOccupiedMaskFromZones(w, h, zonesList) {
 }
 
 function floodFillVoid(occ, w, h, sx, sy) {
-  // sx,sy в координатах w/h
   const ix = Math.floor(sx);
   const iy = Math.floor(sy);
   if (ix < 0 || iy < 0 || ix >= w || iy >= h) return null;
 
   const idx0 = iy * w + ix;
-  if (occ[idx0] === 1) return null; // старт попал в "занято"
+  if (occ[idx0] === 1) return null;
 
   const visited = new Uint8Array(w * h);
   const qx = new Int32Array(w * h);
@@ -1372,10 +1340,8 @@ function floodFillVoid(occ, w, h, sx, sy) {
   visited[idx0] = 1;
   qx[qt] = ix; qy[qt] = iy; qt++;
 
-  // Сохраним bounding box, чтобы ускорить потом
   let minX = ix, maxX = ix, minY = iy, maxY = iy;
 
-  // 4-связность
   const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
 
   while (qh < qt) {
@@ -1394,7 +1360,7 @@ function floodFillVoid(occ, w, h, sx, sy) {
       if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
       const ni = ny * w + nx;
       if (visited[ni]) continue;
-      if (occ[ni] === 1) continue; // нельзя залезать в занято
+      if (occ[ni] === 1) continue;
       visited[ni] = 1;
       qx[qt] = nx; qy[qt] = ny; qt++;
     }
@@ -1403,20 +1369,16 @@ function floodFillVoid(occ, w, h, sx, sy) {
   return { visited, minX, maxX, minY, maxY };
 }
 
-// Простая marching squares для получения контура области visited==1
 function marchingSquares(visited, w, h, bb) {
   const { minX, maxX, minY, maxY } = bb;
 
-  // берём область на 1 пиксель шире, чтобы контур не обрезался
   const x0 = Math.max(minX - 1, 0);
   const x1 = Math.min(maxX + 1, w - 2);
   const y0 = Math.max(minY - 1, 0);
   const y1 = Math.min(maxY + 1, h - 2);
 
-  // helper: внутри ли область
   const inside = (x, y) => visited[y * w + x] === 1;
 
-  // Собираем сегменты (много), потом склеим в полилинию
   const segments = [];
 
   for (let y = y0; y <= y1; y++) {
@@ -1427,15 +1389,11 @@ function marchingSquares(visited, w, h, bb) {
       const d = inside(x, y + 1) ? 1 : 0;
       const code = (a << 3) | (b << 2) | (c << 1) | d;
 
-      // Координаты углов клетки: (x,y)-(x+1,y+1)
-      // Середины рёбер:
       const top = [x + 0.5, y];
       const right = [x + 1, y + 0.5];
       const bottom = [x + 0.5, y + 1];
       const left = [x, y + 0.5];
 
-      // Таблица для стандартного marching squares (без амбигуити-решения — нам достаточно для “дырки”)
-      // Добавляем сегмент(ы) в формате [x1,y1,x2,y2]
       switch (code) {
         case 0:
         case 15:
@@ -1480,8 +1438,6 @@ function marchingSquares(visited, w, h, bb) {
 
   if (!segments.length) return null;
 
-  // Склейка сегментов в один контур: быстрый greedy по совпадению концов
-  // (для “дырки” обычно получается один связный цикл)
   const key = (x, y) => `${x.toFixed(3)},${y.toFixed(3)}`;
   const map = new Map();
   for (const s of segments) {
@@ -1490,7 +1446,6 @@ function marchingSquares(visited, w, h, bb) {
     map.get(k1).push(s);
   }
 
-  // стартуем с первого сегмента
   const first = segments[0];
   let cx = first[2], cy = first[3];
   const poly = [[first[0], first[1]], [first[2], first[3]]];
@@ -1498,7 +1453,6 @@ function marchingSquares(visited, w, h, bb) {
   const used = new Set();
   used.add(first);
 
-  // ищем следующий сегмент по стартовой точке
   for (let guard = 0; guard < 200000; guard++) {
     const k = key(cx, cy);
     const arr = map.get(k);
@@ -1516,12 +1470,10 @@ function marchingSquares(visited, w, h, bb) {
     cx = next[2]; cy = next[3];
     poly.push([cx, cy]);
 
-    // замкнули
     const [sx, sy] = poly[0];
     if (Math.abs(cx - sx) < 1e-3 && Math.abs(cy - sy) < 1e-3) break;
   }
 
-  // Упростим (уберём лишние точки)
   const simplified = [];
   for (let i = 0; i < poly.length; i++) {
     const p = poly[i];
@@ -1534,7 +1486,6 @@ function marchingSquares(visited, w, h, bb) {
 }
 
 function polyToSvgPath(poly, scaleX, scaleY) {
-  // poly в координатах mask (пиксели), переводим обратно в viewBox
   const pts = poly.map(([x, y]) => [x * scaleX, y * scaleY]);
   let d = `M${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`;
   for (let i = 1; i < pts.length; i++) {
@@ -1546,16 +1497,14 @@ function polyToSvgPath(poly, scaleX, scaleY) {
 
 function createZoneFromVoidAt(clientX, clientY) {
   if (!isAdmin) return false;
-  if (mapMode === "eng") return false; // если нужно — можно включить и для eng отдельно
+  if (mapMode === "eng") return false;
 
   const svgPt = clientToSvgPoint(clientX, clientY);
   if (!svgPt) return false;
 
-  // Маска делается уменьшенной, чтобы не лагало
   const MASK_W = 420;
   const MASK_H = Math.round((MASK_W * VIEW.h) / VIEW.w);
 
-  // Масштаб: viewBox -> mask
   const sx = MASK_W / VIEW.w;
   const sy = MASK_H / VIEW.h;
 
@@ -1570,17 +1519,12 @@ function createZoneFromVoidAt(clientX, clientY) {
     return false;
   }
 
-  // Если пустота слишком большая (например фон вокруг всего) — не создаём
+ 
   const area = (() => {
-    // грубо оцениваем площадь по bbox
     const bw = (filled.maxX - filled.minX + 1);
     const bh = (filled.maxY - filled.minY + 1);
     return bw * bh;
   })();
-  // if (area > w * h * 0.45) {
-    // alert("Це схоже на зовнішній фон, а не локальний 'пустир'.");
-    // return false;
-  // }
 
   const poly = marchingSquares(filled.visited, w, h, filled);
   if (!poly) {
@@ -1588,7 +1532,6 @@ function createZoneFromVoidAt(clientX, clientY) {
     return false;
   }
 
-  // mask -> viewBox
   const d = polyToSvgPath(poly, VIEW.w / MASK_W, VIEW.h / MASK_H);
 
   const existingIds = new Set(zones.map((z) => z.id));
@@ -1634,7 +1577,6 @@ function createZoneFromVoidAt(clientX, clientY) {
           fontFamily: "'Montserrat', sans-serif",
         }}
       >
-        {/* Top bar */}
         <div className="sticky top-0 z-40 border-b bg-white/90 backdrop-blur">
           <div className="px-5 py-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-[260px]">
@@ -1654,9 +1596,9 @@ function createZoneFromVoidAt(clientX, clientY) {
               </div>
             </div>
 
-            {/* Desktop controls */}
+
             <div className="hidden md:flex items-center gap-2">
-              {/* Search and filter */}
+
               <div className="flex items-center rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
                 <Search className="w-4 h-4 text-slate-500 ml-3" />
                 <input
@@ -1665,20 +1607,6 @@ function createZoneFromVoidAt(clientX, clientY) {
                   placeholder={settings.strings.searchPlaceholder}
                   className="bg-transparent outline-none text-sm placeholder:text-slate-400 w-[220px] px-3 py-2"
                 />
-                {/*<button
-                  onClick={() => setFilterProjectOnly((v) => !v)}
-                  className={
-                    "ml-2 px-2 py-1 rounded-lg border text-xs flex items-center gap-1 transition " +
-                    (filterProjectOnly
-                      ? "bg-amber-500 text-white border-amber-500"
-                      : "bg-white border-slate-200 text-slate-700")
-                  }
-                  title={settings.strings.filterOnlyProject}
-                >
-                  <Filter className="w-3.5 h-3.5" />
-                  
-                </button>
-                */}
               </div>
 
               
@@ -1697,8 +1625,6 @@ function createZoneFromVoidAt(clientX, clientY) {
                   : "СХЕМА ІНЖ. ЗАБЕЗПЕЧЕННЯ"}
               </SoftButton>
 
-
-              {/* Admin controls */}
               {!isAdmin ? (
                 <PrimaryButton onClick={() => setAdminLoginOpen(true)} title="Увійти як адміністратор">
                   <Shield className="w-4 h-4" />
@@ -1736,7 +1662,6 @@ function createZoneFromVoidAt(clientX, clientY) {
           </div>
         </div>
         
-        {/* Mobile map mode switch */}
 <div className="md:hidden px-5 pt-3">
   <SoftButton
     onClick={() =>
@@ -1757,10 +1682,9 @@ function createZoneFromVoidAt(clientX, clientY) {
 
 
 
-        {/* Main content */}
         <div className="px-5 py-5">
           <div className="grid grid-cols-12 gap-4">
-            {/* Left column */}
+
             <div className="col-span-12 lg:col-span-3">
               <Card className="p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -1917,7 +1841,6 @@ function createZoneFromVoidAt(clientX, clientY) {
               </div>
             </div>
 
-            {/* Right column */}
             <div className="col-span-12 lg:col-span-9">
               <Card className="p-3">
   <div className="flex items-center justify-between px-2 pb-3">
@@ -1925,27 +1848,6 @@ function createZoneFromVoidAt(clientX, clientY) {
       <div className="font-semibold">{settings.strings.interactiveMapTitle}</div>
       <div className="text-xs text-slate-600">{settings.strings.interactiveMapDesc}</div>
     </div>
-                {/*
-    <div className="flex items-center gap-2">
-      <SoftButton onClick={() => setContoursVisible((v) => !v)} title={settings.strings.showContours}>
-        {contoursVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-        {settings.strings.showContours}
-      </SoftButton>
-      <SoftButton
-        onClick={() => setOnlyProjectContours((v) => !v)}
-        title={settings.strings.onlyProjectContours}
-        className={onlyProjectContours ? "bg-amber-50 border-amber-200" : ""}
-      >
-        <SlidersHorizontal className="w-4 h-4" />
-        {settings.strings.onlyProjectContours}
-      </SoftButton>
-
-      <PrimaryButton onClick={() => setModalOpen(true)} disabled={!selected || !canClickZone(selected)} title="Деталі">
-        <Info className="w-4 h-4" />
-        {settings.strings.detailsButton}
-      </PrimaryButton>
-    </div>
-    */}
   </div>
 
   <div
@@ -2035,14 +1937,14 @@ function createZoneFromVoidAt(clientX, clientY) {
 return (
   <g key={z.id}>
     {(() => {
-      const isLine = z.shape === "line"; // для engItems ты так и задаёшь
+      const isLine = z.shape === "line";
       const hitStroke = isLine ? 18 : 1;
 
       return (
         <path
           data-zoneid={z.id}
           d={z.d}
-          fill={isLine ? "none" : "rgba(0,0,0,0)"}   // ВАЖНО: полигон ловит по fill
+          fill={isLine ? "none" : "rgba(0,0,0,0)"}   
           stroke="rgba(0,0,0,0)"
           strokeWidth={hitStroke}
           pointerEvents={
@@ -2087,7 +1989,6 @@ return (
       </svg>
     </div>
 
-    {/* Tooltip — ВНУТРИ container */}
     {hover.id ? (
       <div className="absolute z-30 pointer-events-none" style={{ left: hover.x + 12, top: hover.y + 12 }}>
         {(() => {
@@ -2109,7 +2010,6 @@ return (
       </div>
     ) : null}
 
-    {/* Navigation hint overlay — ВНУТРИ container */}
     <div className="absolute bottom-3 left-3 flex flex-wrap gap-2 pointer-events-none">
       <span className="text-xs px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 shadow-sm">
         {settings.strings.navigationHintPan}
@@ -2126,8 +2026,6 @@ return (
   </div>
 </Card>
 
-
-              {/* Admin panel */}
               {isAdmin ? (
                 <div className="mt-4">
                   <Card className="p-4">
@@ -2195,7 +2093,6 @@ return (
           </div>
         </div>
 
-        {/* Public modal for zone details */}
         {modalOpen && selected ? (
           <Modal onClose={() => setModalOpen(false)} title={`${selected.id} • ${selected.name}`}>
             <div className="grid grid-cols-12 gap-4">
@@ -2244,7 +2141,6 @@ return (
           </Modal>
         ) : null}
 
-        {/* Admin login modal */}
         {adminLoginOpen ? (
           <Modal onClose={() => setAdminLoginOpen(false)} title={settings.strings.adminLoginTitle} small>
             <div className="text-sm text-slate-600">{settings.strings.adminLoginDesc}</div>

@@ -1,17 +1,11 @@
-// engineering.paths.js
-// viewBox for the engineering scheme image: 1151 x 766
-// We keep the same style as zones.paths.js: export const zones = [{id,name,d},...]
-// Here "lines" are also stored as SVG paths (open paths are OK for hover/click).
-
 export const features = [
-  // --- Main polygon zone (the only filled area) ---
+
   {
     id: "z00",
     name: "Zone 00",
     d: "M354.5 563L317 588L291 538.5L259.5 508.5L279.5 451L291 446L434 451L430.5 563H366H354.5Z",
   },
 
-  // --- Lines (clickable) ---
   {
     id: "l01",
     name: "Line 01",
@@ -23,8 +17,7 @@ export const features = [
     d: "M371 567L672 571.5L971.5 565.5",
   },
 
-  // This one is the “segmented / dashed-looking” line in SVG data (many small segments).
-  // In your UI it will still be clickable as ONE object, because it's one path string.
+
   {
     id: "l03",
     name: "Line 03",

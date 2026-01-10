@@ -1,7 +1,7 @@
 {
-  "name": "build-area-project",
+  "name": "zabudova-sokil",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "homepage": "https://userresu01.github.io/Sokil/",
   "scripts": {
