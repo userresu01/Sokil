@@ -132,9 +132,9 @@ const DEFAULT_STRINGS = {
 };
 
 const DEFAULT_SETTINGS = {
-  projectName: 'Сокіл-л',
+  projectName: 'Сокіл-Л',
   projectSubtitle: "Інтерактивна мапа території",
-  adminPassword: "admin999",
+  adminPassword: "admin599",
   strings: DEFAULT_STRINGS,
 };
 
